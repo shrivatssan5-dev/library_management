@@ -17,22 +17,45 @@ function getEnvironment() {
   return 'local';
 }
 
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  process.env.STUDENT_APP_URL,
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://localhost:5174',
-  'http://127.0.0.1:5174',
-  'capacitor://localhost',
-  'https://localhost',
-  'http://localhost',
-].filter((origin): origin is string => Boolean(origin));
+function getAllowedOrigins(): string[] {
+  const fromEnv = [process.env.FRONTEND_URL, process.env.STUDENT_APP_URL, process.env.ALLOWED_ORIGINS]
+    .filter((value): value is string => Boolean(value))
+    .flatMap((value) => value.split(',').map((part) => part.trim()))
+    .filter(Boolean);
+
+  return [
+    ...fromEnv,
+    'https://library-management-flame-nu.vercel.app',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174',
+    'capacitor://localhost',
+    'https://localhost',
+    'http://localhost',
+  ];
+}
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin(origin, callback) {
+      // Allow server-to-server, mobile apps, and same-origin tools without an Origin header.
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      const allowed = getAllowedOrigins();
+      if (allowed.includes(origin) || origin.endsWith('.vercel.app')) {
+        callback(null, true);
+        return;
+      }
+
+      callback(null, false);
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 app.use(express.json());
