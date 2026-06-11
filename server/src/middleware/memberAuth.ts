@@ -1,22 +1,23 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-export interface AuthPayload {
+export interface MemberAuthPayload {
   id: number;
   email: string;
   name: string;
-  role?: 'librarian';
+  membership_number: string;
+  role: 'member';
 }
 
 declare global {
   namespace Express {
     interface Request {
-      librarian?: AuthPayload;
+      member?: MemberAuthPayload;
     }
   }
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
+export function requireMemberAuth(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
 
   if (!header?.startsWith('Bearer ')) {
@@ -31,13 +32,13 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
 
   try {
-    const payload = jwt.verify(token, secret) as AuthPayload;
+    const payload = jwt.verify(token, secret) as MemberAuthPayload & { role?: string };
 
-    if (payload.role && payload.role !== 'librarian') {
-      return res.status(403).json({ error: 'Librarian access required' });
+    if (payload.role !== 'member') {
+      return res.status(403).json({ error: 'Member access required' });
     }
 
-    req.librarian = payload;
+    req.member = payload;
     next();
   } catch {
     return res.status(401).json({ error: 'Invalid or expired token' });

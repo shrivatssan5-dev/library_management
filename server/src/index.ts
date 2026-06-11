@@ -1,8 +1,9 @@
+import path from 'path';
 import dotenv from 'dotenv';
 import app from './app';
 import { migrate } from './db/migrate';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const PORT = process.env.PORT || 3001;
 

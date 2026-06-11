@@ -39,7 +39,12 @@ router.post('/login', async (req, res) => {
       expiresIn: (process.env.JWT_EXPIRES_IN || '8h') as SignOptions['expiresIn'],
     };
     const token = jwt.sign(
-      { id: librarian.id, email: librarian.email, name: librarian.name },
+      {
+        id: librarian.id,
+        email: librarian.email,
+        name: librarian.name,
+        role: 'librarian',
+      },
       secret,
       signOptions
     );

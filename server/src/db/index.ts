@@ -1,34 +1,43 @@
+import path from 'path';
 import { Pool, type PoolConfig } from 'pg';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
+function isSupabase(): boolean {
+  const url = process.env.DATABASE_URL ?? '';
+  const host = process.env.DATABASE_HOST ?? '';
+  return url.includes('supabase.co') || host.includes('supabase.co');
+}
 
 function resolveSsl(): PoolConfig['ssl'] {
-  if (process.env.DATABASE_SSL === 'true') {
-    return { rejectUnauthorized: false };
-  }
-  if (process.env.DATABASE_SSL === 'false') {
+  if (process.env.DATABASE_SSL === 'false' && !isSupabase()) {
     return false;
   }
-  if (process.env.DATABASE_URL?.includes('sslmode=require')) {
-    return { rejectUnauthorized: false };
-  }
-  if (process.env.VERCEL) {
+  if (
+    process.env.DATABASE_SSL === 'true' ||
+    isSupabase() ||
+    process.env.DATABASE_URL?.includes('sslmode=')
+  ) {
     return { rejectUnauthorized: false };
   }
   return false;
 }
 
+function normalizeConnectionString(url: string): string {
+  // Let pg Pool ssl config handle TLS; avoid sslmode forcing verify-full on Supabase.
+  return url.replace(/([?&])sslmode=[^&]*&?/g, '$1').replace(/[?&]$/, '');
+}
+
 function buildPoolConfig(): PoolConfig {
   const ssl = resolveSsl();
-  const isServerless = !!process.env.VERCEL;
 
   if (process.env.DATABASE_URL) {
     return {
-      connectionString: process.env.DATABASE_URL,
+      connectionString: normalizeConnectionString(process.env.DATABASE_URL),
       ssl,
-      max: isServerless ? 1 : 10,
-      idleTimeoutMillis: isServerless ? 5000 : 30000,
+      max: 10,
+      idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
     };
   }
@@ -41,8 +50,8 @@ function buildPoolConfig(): PoolConfig {
       user: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
       ssl,
-      max: isServerless ? 1 : 10,
-      idleTimeoutMillis: isServerless ? 5000 : 30000,
+      max: 10,
+      idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
     };
   }
